@@ -1,0 +1,88 @@
+# ========== Board details             ==========
+
+esphome:
+  name: garagetextdisplay
+  friendly_name: ESPHome max7219 Display
+
+esp32:
+  board: wemos_d1_mini32
+  framework:
+    type: arduino
+
+spi:
+  clk_pin: 17
+  mosi_pin: 16
+
+time:
+  - platform: sntp
+    id: esptime
+    timezone: America/New_York
+
+# ========== Enable logging            ==========
+logger:
+
+# ========== Enable Home Assistant API ==========
+api:
+  encryption:
+    key: "xxx"
+
+ota:
+
+# ========== Configure Wifi            ==========
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "garagetextdisplay"
+    password: "xxx"
+
+captive_portal:
+
+#========== Display settings           ==========
+
+display:
+  - platform: max7219digit
+    id: garagetextdisplay
+    cs_pin: 21
+    num_chips: 4
+    rotate_chip: 0
+    scroll_speed: 50ms
+    scroll_mode: STOP
+    update_interval: 3s
+    intensity: 2
+    lambda: |-
+      if (id(new_text) <= id(txt_cycles)) {
+        if(id(new_text) == 0) {
+          id(txt_cycles) = ceil(strlen(id(txt).state.c_str()) / 6);
+        }
+        it.printf(0, 0, id(digit_font), "%s", id(txt).state.c_str());
+        id(new_text)++;
+      } else {
+        it.strftime(0, 0, id(digit_font), " %H:%M", id(esptime).now());
+      }    
+
+font:
+  - file: "pixelmix.ttf"
+    id: digit_font
+    size: 8
+
+globals:
+  - id: new_text
+    type: int
+    initial_value: "3"
+  - id: txt_cycles
+    type: int
+    initial_value: "1"
+
+text_sensor:
+  - platform: homeassistant
+    name: "Garage Text Display"
+    entity_id: input_text.garagetext
+    id: txt
+    on_value:
+      then:
+        lambda: |-
+                    id(new_text) = 0;
